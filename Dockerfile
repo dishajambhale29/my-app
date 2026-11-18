@@ -3,25 +3,31 @@
 # ==============================================================================
 FROM php:8.4-apache
 
-# Install official docker-php-extension-installer
-COPY --from=mlocati/docker-php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
-
-# Install PHP extensions required for Laravel, MySQL, PostgreSQL, SQLite
-RUN install-php-extensions @composer \
+# Install required system packages and PHP extensions
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    unzip \
+    libzip-dev \
+    libicu-dev \
+    libpq-dev \
+    libsqlite3-dev \
+    && docker-php-ext-install \
     pdo_mysql \
     pdo_pgsql \
     pdo_sqlite \
-    mbstring \
     zip \
     exif \
     pcntl \
     bcmath \
     intl \
-    opcache
+    opcache \
+    && a2enmod rewrite \
+    && echo "ServerName localhost" >> /etc/apache2/apache2.conf \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-# Enable Apache rewrite module and suppress ServerName warnings
-RUN a2enmod rewrite \
-    && echo "ServerName localhost" >> /etc/apache2/apache2.conf
+# Install Composer from official Composer image
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 # Configure Apache Document Root to Laravel public/ directory
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
